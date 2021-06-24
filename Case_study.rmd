@@ -1,0 +1,97 @@
+---
+title: "Casestudy.rmd"
+output: html_document
+---
+I was assigned to conduct a fictional case study from coursera on the bike sharing process between members and nonmembers, the question that I was asked to answer in order to help stakeholders better was:
+
+How do members and nonmembers differ in terms of bike rental usage?
+
+I hypothesized that the main difference between the two would be the amount of time that a member or nonmember uses a bike.
+
+So I started to prep my analysis on Rstudio, by asking,preparing,processing,analyzing,sharing and acting.
+
+I started off by loading packages
+```{r}
+install.packages("readr")
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("here")
+install.packages("chron")
+install.packages("ggplot2")
+install.packages("plyr")
+```
+Then I simply uploaded the dataset I was working with and renamed it b3 for my convenience
+```{r}
+b3 <- read_csv("~/Downloads/202004-divvy-tripdata 2.csv")
+```
+Once I imported the Data set to Rstudio, I noticed that the "started at" column had both date and time integrated together. I had to clean that up by separating them into two columns and then adjusting the format to "date" and "time" from characters.
+```{r}
+b3<-b3 %>% 
+  separate(started_at,into = c('start_date','start_time'),sep=' ') %>% 
+  separate(ended_at,into=c('end_date','end_time'),sep=' ')
+```
+
+```{r}
+b3=b3 %>% 
+  mutate(start_time=chron(times=start_time),
+         end_time=chron(times=end_time))
+```
+In order to get the trip duration for each individual member and nonmember, I used this.
+```{r}
+b3=b3 %>% 
+  mutate(trip_duration=as.numeric(end_time-start_time))
+```
+But I couldnt understand it once I used the previous format so I had to convert it to POSIXCT format, in order to make sense of it.
+```{r}
+b3=b3 %>% 
+  mutate(trip_duration=format(as.POSIXct((b3$trip_duration)*86400,
+                                        origin= "1970-01-01", tz= "UTC"), "%H:%M:%S"))
+```
+
+I also took out some unnecessary columns, re-coded the member_casual column to show members and non members, and renamed columns.
+```{r}
+b3 <-b3 [ ,-c(4,5,7,9,10,11,12,13)]
+```
+
+```{r}
+b3 <-b3 %>% 
+  mutate(member_casual=recode(member_casual, casual="nonmember"))
+```
+
+```{r}
+colnames(b3) [colnames(b3)=="member_casual"]<-"client_type"
+colnames(b3) [colnames(b3)=="ride_id"]<-"bike_id"
+colnames(b3) [colnames(b3)=="rideable_type"]<-"bike_brand"
+```
+
+```{r}
+head(b3)
+```
+Then reformated everything so that it made more sense to use in calculations or graphs.
+```{r}
+b3$start_date <-as.Date(b3$start_date, format= "%Y-%m-%d")
+b3$member_casual <-as.factor(b3$member_casual)
+b3$trip_duration=as.factor(b3$trip_duration)
+b3$bike_id<-as.factor(b3$bike_id)
+```
+
+```{r}
+summary(b3)
+```
+Now everything is neat and organized and I can start plotting
+I have started to plot this in a very simple manner to show that my hypothesis that the difference between nonmember and member is the amount of time a bike is used.
+
+```{r}
+ggplot(data=b3)+
+  geom_bar(mapping=aes(x=trip_duration, color=client_type))+
+  labs(
+    title = paste("Member vs. Nonmember Bikeshare Usage"),
+    subtitle = paste("case study assigned by coursera |fictional"),
+    caption = "Data from (https://divvy-tripdata.s3.amazonaws.com/index.html)")
+```
+
+Here one can clearly see that the non member which spans vertically in green/aqua is the one that uses the bikes for the most amount of time. The members that are shown in red are higher in count but use their bikes for less time.
+
+In conclusion I would say that nonmembers are using the bikes for more time than members, I would theorize that maybe nonmembers are tourists that fly into the city for the day and take a ride on the bike. That could explain why they rent the bike for a longer period of time.
+
+The solution I would offer to the stakeholders is to maybe expand their brand internationally or countrywide so that it would entice more nonmembers to subscribe to the membership and be able to use the bikes no matter which city they were lived in.
